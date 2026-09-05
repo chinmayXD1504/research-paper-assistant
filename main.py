@@ -124,7 +124,7 @@ async def root():
             <p>The FastAPI backend server is active and connected. You can launch the interactive frontend dashboard or explore the Swagger API endpoints below.</p>
             
             <div class="btn-group">
-                <a href="http://localhost:3000/dashboard" class="btn btn-primary">
+                <a href="https://research-paper-assistant-seven.vercel.app/dashboard" class="btn btn-primary" target="_blank">
                     🚀 Open Web Dashboard (UI)
                 </a>
                 <a href="/docs" class="btn btn-secondary">
