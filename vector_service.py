@@ -7,8 +7,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 from pinecone import Pinecone, ServerlessSpec
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
@@ -17,26 +16,9 @@ from pdf_processor import ExtractedChunk
 
 logger = logging.getLogger(__name__)
 
-EMBED_MODEL = "text-embedding-004"
+EMBED_MODEL = "models/text-embedding-004"
 EMBED_DIM = 768
 UPSERT_BATCH_SIZE = 100
-
-_genai_client: Optional[genai.Client] = None
-_cached_api_key: Optional[str] = None
-
-
-def get_genai_client() -> Optional[genai.Client]:
-    global _genai_client, _cached_api_key
-    if not settings.GEMINI_API_KEY:
-        return None
-    if _genai_client is None or _cached_api_key != settings.GEMINI_API_KEY:
-        try:
-            _genai_client = genai.Client(api_key=settings.GEMINI_API_KEY)
-            _cached_api_key = settings.GEMINI_API_KEY
-        except Exception as exc:
-            logger.warning("Gemini client initialization error: %s", exc)
-            return None
-    return _genai_client
 
 
 def get_pinecone_client() -> Optional[Pinecone]:
@@ -85,24 +67,15 @@ class RetryableEmbeddingError(Exception):
     reraise=True,
 )
 def embed_text(text: str, task_type: str = "retrieval_document") -> list[float]:
-    client = get_genai_client()
-    if not client:
-        raise RetryableEmbeddingError("GEMINI_API_KEY is not configured or client failed to initialize.")
-    try:
-        config = types.EmbedContentConfig(
-            task_type=task_type.upper() if task_type else None
-        )
-        result = client.models.embed_content(
-            model=EMBED_MODEL,
-            contents=text,
-            config=config,
-        )
-        if result.embeddings and len(result.embeddings) > 0:
-            return result.embeddings[0].values
-        raise RetryableEmbeddingError("No embedding returned from Gemini model.")
-    except Exception as exc:
-        logger.warning("Embedding call failed, will retry: %s", exc)
-        raise RetryableEmbeddingError(str(exc)) from exc
+    if settings.GEMINI_API_KEY:
+        try:
+            genai.configure(api_key=settings.GEMINI_API_KEY)
+            result = genai.embed_content(model=EMBED_MODEL, content=text, task_type=task_type)
+            return result["embedding"]
+        except Exception as exc:
+            logger.warning("Embedding call failed, will retry: %s", exc)
+            raise RetryableEmbeddingError(str(exc)) from exc
+    return [0.0] * EMBED_DIM
 
 
 @retry(stop=stop_after_attempt(4), wait=wait_exponential(multiplier=1, min=2, max=20))

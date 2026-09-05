@@ -9,8 +9,7 @@ import json
 import logging
 from typing import Optional
 
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
 from config import settings
 from vector_service import similarity_search
@@ -31,22 +30,14 @@ Rules:
 }
 """
 
-_genai_client: Optional[genai.Client] = None
-_cached_api_key: Optional[str] = None
 
-
-def _get_genai_client() -> Optional[genai.Client]:
-    global _genai_client, _cached_api_key
-    if not settings.GEMINI_API_KEY:
-        return None
-    if _genai_client is None or _cached_api_key != settings.GEMINI_API_KEY:
-        try:
-            _genai_client = genai.Client(api_key=settings.GEMINI_API_KEY)
-            _cached_api_key = settings.GEMINI_API_KEY
-        except Exception as exc:
-            logger.warning("Gemini client initialization error: %s", exc)
-            return None
-    return _genai_client
+def _get_generative_model():
+    if settings.GEMINI_API_KEY:
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+    return genai.GenerativeModel(
+        "gemini-1.5-flash",
+        generation_config={"response_mime_type": "application/json"},
+    )
 
 
 def _build_sources_block(matches: list[dict]) -> tuple[str, dict[int, dict]]:
@@ -97,20 +88,10 @@ async def answer_question(question: str, user_id: str, paper_id: str, top_k: int
         }
 
     try:
-        client = _get_genai_client()
-        if not client:
-            raise RuntimeError("Gemini client could not be initialized.")
-
-        prompt = f"Sources:\n{sources_block}\n\nQuestion: {question}"
-        response = client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_INSTRUCTIONS,
-                response_mime_type="application/json",
-            ),
-        )
-        parsed = _parse_model_json(response.text or "")
+        model = _get_generative_model()
+        prompt = f"{SYSTEM_INSTRUCTIONS}\n\nSources:\n{sources_block}\n\nQuestion: {question}"
+        response = model.generate_content(prompt)
+        parsed = _parse_model_json(response.text)
 
         used_numbers = [n for n in parsed.get("used_source_numbers", []) if n in lookup]
         citations = [lookup[n] for n in sorted(set(used_numbers))]

@@ -14,6 +14,7 @@ python-multipart>=0.0.9
 pdfplumber>=0.11.0
 pypdf>=4.2.0
 langchain-text-splitters>=0.2.0
+google-genai>=0.1.0
 google-generativeai>=0.7.0
 pinecone>=4.0.0
 tenacity>=8.3.0
