@@ -46,3 +46,6 @@ Thumbs.db
 # Ensure frontend/src/lib is always included
 !frontend/src/lib/
 !frontend/src/lib/**
+
+.vercel
+.env*
