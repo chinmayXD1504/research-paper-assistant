@@ -5,14 +5,15 @@ export const dynamic = 'force-dynamic';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Lock, Mail, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
-import { api, setAuthToken } from '@/lib/api';
+import { Sparkles, Lock, Mail, ArrowRight, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import { setAuthToken } from '@/lib/api';
 import { store, nameFromEmail } from '@/lib/store';
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -24,12 +25,11 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // Save dynamic user profile according to the entered email
       const cleanEmail = email.trim();
       const domain = cleanEmail.includes('@') ? cleanEmail.split('@')[1] : 'academic';
       const roleOrDept = domain.includes('edu') || domain.includes('ac') 
         ? `${domain} Department` 
-        : 'Research Fellow';
+        : 'Research Scholar';
 
       store.setUserProfile({
         email: cleanEmail,
@@ -90,13 +90,20 @@ export default function LoginPage() {
             <div className="relative">
               <Lock className="w-4 h-4 text-[#57534e] absolute left-3.5 top-3.5" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-[#FFFFFF] border border-[#D3C4BE] focus:border-[#1c1917] text-[#1c1917] placeholder-[#999999] text-xs rounded-2xl pl-10 pr-4 py-3.5 focus:outline-none transition shadow-inner"
+                className="w-full bg-[#FFFFFF] border border-[#D3C4BE] focus:border-[#1c1917] text-[#1c1917] placeholder-[#999999] text-xs rounded-2xl pl-10 pr-10 py-3.5 focus:outline-none transition shadow-inner"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-3.5 text-[#57534e] hover:text-[#1c1917] transition cursor-pointer"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 

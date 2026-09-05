@@ -23,7 +23,7 @@ from database import AsyncSessionLocal, get_db, init_db
 from models import Chunk, Paper, PaperStatus, User
 from pdf_processor import UnsupportedPdfError, chunk_document
 from rag_service import answer_question
-from security import create_access_token, get_current_user, hash_password, verify_password
+from security import create_access_token, get_current_user, hash_password, verify_password, validate_strong_password
 from vector_service import ensure_index, upsert_chunks, similarity_search
 
 logging.basicConfig(level=logging.INFO)
@@ -151,6 +151,13 @@ async def health():
 # --- Auth Endpoints ---
 @app.post("/api/auth/register", response_model=TokenResponse, tags=["Authentication"])
 async def register(payload: UserRegisterRequest, db: AsyncSession = Depends(get_db)):
+    is_valid, reason = validate_strong_password(payload.password)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=reason or "Password does not meet security requirements."
+        )
+
     stmt = select(User).where(User.email == payload.email)
     res = await db.execute(stmt)
     existing_user = res.scalars().first()
