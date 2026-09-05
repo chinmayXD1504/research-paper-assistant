@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #F4EEE1;
+  --foreground: #1c1917;
+  --linen: #EFEEEE;
+  --sand: #E9CCB1;
+  --taupe: #D3C4BE;
+  --khaki: #E4DAC2;
+  --ivory: #F4EEE1;
+  --stone: #C4BDAC;
+  --blush: #EBCFC4;
+  --oat: #E8E6D9;
+  --gray: #999999;
+  --cashmere: #F3ECE7;
+}
+
+body {
+  color: var(--foreground);
+  background-color: #F4EEE1;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", Georgia, serif;
+  min-height: 100vh;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(233, 204, 177, 0.35) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(235, 207, 196, 0.30) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(228, 218, 194, 0.25) 0px, transparent 60%);
+  background-attachment: fixed;
+}
+
+/* Warm Editorial Card Panels */
+.paper-card {
+  background-color: #FAF7F2;
+  border: 1px solid #D3C4BE;
+  box-shadow: 0 4px 12px -2px rgba(41, 37, 36, 0.05);
+  transition: all 0.2s ease-in-out;
+}
+
+.paper-card:hover {
+  background-color: #FFFFFF;
+  border-color: #C4BDAC;
+  box-shadow: 0 8px 20px -3px rgba(41, 37, 36, 0.08);
+  transform: translateY(-2px);
+}
+
+.paper-card-interactive {
+  background-color: #F3ECE7;
+  border: 1px solid #D3C4BE;
+}
+
+.paper-card-interactive:hover {
+  background-color: #FAF7F2;
+  border-color: #E9CCB1;
+}
+
+/* Custom Editorial Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F4EEE1;
+}
+::-webkit-scrollbar-thumb {
+  background: #C4BDAC;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #999999;
+}
+
+::selection {
+  background: #E9CCB1;
+  color: #1c1917;
+}
