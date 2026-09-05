@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import UploadModal from '@/components/UploadModal';
@@ -50,7 +52,7 @@ export default function CrossPaperSearchPage() {
       const matched: SearchResult[] = [];
 
       papers.forEach((paper) => {
-        if (paper.summary.toLowerCase().includes(q) || paper.title.toLowerCase().includes(q)) {
+        if (paper.summary && (paper.summary.toLowerCase().includes(q) || paper.title.toLowerCase().includes(q))) {
           matched.push({
             id: `res-${paper.id}-1`,
             paper_id: paper.id,
@@ -93,7 +95,7 @@ export default function CrossPaperSearchPage() {
             paper_id: paper.id,
             paper_title: paper.title,
             page_number: (i * 2) + 2,
-            text: paper.summary.slice(0, 220),
+            text: (paper.summary || '').slice(0, 220),
             score: Math.max(0.75, 0.90 - (i * 0.05)),
           });
         });

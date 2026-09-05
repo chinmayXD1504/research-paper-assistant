@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -23,7 +25,6 @@ export default function RegisterPage() {
     setError('');
 
     try {
-      // Save dynamic profile in store
       store.setUserProfile({
         email: email.trim(),
         fullName: fullName.trim() || email.split('@')[0],
