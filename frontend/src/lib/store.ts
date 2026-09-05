@@ -281,8 +281,108 @@ const DEFAULT_PROFILE: UserProfile = {
   roleOrDept: 'Research Scholar'
 };
 
+export interface RegisteredAccount {
+  email: string;
+  password: string;
+  fullName: string;
+  initials: string;
+  roleOrDept: string;
+  createdAt: string;
+}
+
+const DEFAULT_ACCOUNTS: RegisteredAccount[] = [
+  {
+    email: 'scholar@research.edu',
+    password: 'Password@123',
+    fullName: 'Academic Scholar',
+    initials: 'AS',
+    roleOrDept: 'Computer Science Department',
+    createdAt: new Date().toISOString()
+  }
+];
+
 // LocalStorage helpers
 export const store = {
+  getRegisteredAccounts: (): RegisteredAccount[] => {
+    if (typeof window === 'undefined') return DEFAULT_ACCOUNTS;
+    const stored = localStorage.getItem('assistant_registered_accounts');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    localStorage.setItem('assistant_registered_accounts', JSON.stringify(DEFAULT_ACCOUNTS));
+    return DEFAULT_ACCOUNTS;
+  },
+
+  registerAccount: (data: { email: string; password: string; fullName: string; roleOrDept?: string }): { success: boolean; error?: string; profile?: UserProfile } => {
+    const cleanEmail = data.email.trim().toLowerCase();
+    const accounts = store.getRegisteredAccounts();
+
+    if (accounts.some(acc => acc.email.toLowerCase() === cleanEmail)) {
+      return { success: false, error: 'An account with this email already exists. Please sign in.' };
+    }
+
+    const fullName = data.fullName.trim() || nameFromEmail(cleanEmail);
+    const initials = generateInitials(fullName);
+    const roleOrDept = data.roleOrDept || (cleanEmail.includes('edu') ? 'Department of Computer Science' : 'Academic Scholar');
+
+    const newAccount: RegisteredAccount = {
+      email: cleanEmail,
+      password: data.password,
+      fullName,
+      initials,
+      roleOrDept,
+      createdAt: new Date().toISOString()
+    };
+
+    const updatedAccounts = [...accounts, newAccount];
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('assistant_registered_accounts', JSON.stringify(updatedAccounts));
+    }
+
+    const profile: UserProfile = {
+      email: cleanEmail,
+      fullName,
+      initials,
+      roleOrDept
+    };
+
+    store.setUserProfile(profile);
+    return { success: true, profile };
+  },
+
+  authenticateAccount: (email: string, password: string): { success: boolean; error?: string; profile?: UserProfile } => {
+    const cleanEmail = email.trim().toLowerCase();
+    const accounts = store.getRegisteredAccounts();
+    const account = accounts.find(acc => acc.email.toLowerCase() === cleanEmail);
+
+    if (!account) {
+      return { 
+        success: false, 
+        error: 'No account found with this email. Please register for a new account first.' 
+      };
+    }
+
+    if (account.password !== password) {
+      return { 
+        success: false, 
+        error: 'Incorrect password. Please verify your credentials and try again.' 
+      };
+    }
+
+    const profile: UserProfile = {
+      email: account.email,
+      fullName: account.fullName,
+      initials: account.initials,
+      roleOrDept: account.roleOrDept
+    };
+
+    store.setUserProfile(profile);
+    return { success: true, profile };
+  },
+
   getUserProfile: (): UserProfile => {
     if (typeof window === 'undefined') return DEFAULT_PROFILE;
     const stored = localStorage.getItem('assistant_user_profile');
@@ -300,7 +400,7 @@ export const store = {
     const roleOrDept = profile.roleOrDept || (profile.email.includes('ruparel') ? 'Roll: 9056 • T.Y.B.Sc.' : 'Academic Researcher');
     
     const fullProfile: UserProfile = {
-      email: profile.email,
+      email: profile.email.toLowerCase(),
       fullName,
       initials,
       roleOrDept

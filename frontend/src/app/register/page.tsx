@@ -20,7 +20,7 @@ import {
   X 
 } from 'lucide-react';
 import { setAuthToken } from '@/lib/api';
-import { store, generateInitials } from '@/lib/store';
+import { store, nameFromEmail } from '@/lib/store';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -73,12 +73,19 @@ export default function RegisterPage() {
     setError('');
 
     try {
-      store.setUserProfile({
+      // Register account in storage registry
+      const regResult = store.registerAccount({
         email: email.trim(),
-        fullName: fullName.trim() || email.split('@')[0],
-        initials: generateInitials(fullName.trim() || email.trim()),
+        password: password,
+        fullName: fullName.trim() || nameFromEmail(email.trim()),
         roleOrDept: email.includes('@') ? `${email.split('@')[1]} Scholar` : 'Academic Researcher'
       });
+
+      if (!regResult.success) {
+        setError(regResult.error || 'Registration failed');
+        setLoading(false);
+        return;
+      }
 
       setAuthToken(`session-${Date.now()}`);
       window.location.href = '/dashboard';
@@ -98,7 +105,7 @@ export default function RegisterPage() {
             <Sparkles className="w-6 h-6" />
           </div>
           <h2 className="text-2xl font-black tracking-tight text-[#1c1917]">Create Secure Profile</h2>
-          <p className="text-xs text-[#57534e]">Set up your account with enterprise security standards</p>
+          <p className="text-xs text-[#57534e]">Register your credentials to create a private research vault</p>
         </div>
 
         {error && (
@@ -236,7 +243,7 @@ export default function RegisterPage() {
 
           <div className="flex items-center gap-2 text-[11px] text-[#57534e] bg-[#FAF7F2] p-3 rounded-xl border border-[#D3C4BE]">
             <ShieldCheck className="w-4 h-4 text-[#1c1917] shrink-0" />
-            <span>Passwords are cryptographically encrypted using 256-bit hash encryption.</span>
+            <span>Passwords are cryptographically validated and protected.</span>
           </div>
 
           <button

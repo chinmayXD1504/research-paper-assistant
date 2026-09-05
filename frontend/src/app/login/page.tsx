@@ -5,9 +5,9 @@ export const dynamic = 'force-dynamic';
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Lock, Mail, ArrowRight, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Sparkles, Lock, Mail, ArrowRight, AlertCircle, Loader2, Eye, EyeOff, ShieldAlert } from 'lucide-react';
 import { setAuthToken } from '@/lib/api';
-import { store, nameFromEmail } from '@/lib/store';
+import { store } from '@/lib/store';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,25 +24,18 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
-    try {
-      const cleanEmail = email.trim();
-      const domain = cleanEmail.includes('@') ? cleanEmail.split('@')[1] : 'academic';
-      const roleOrDept = domain.includes('edu') || domain.includes('ac') 
-        ? `${domain} Department` 
-        : 'Research Scholar';
+    // Strict credential authentication against registered accounts
+    const authResult = store.authenticateAccount(email, password);
 
-      store.setUserProfile({
-        email: cleanEmail,
-        fullName: nameFromEmail(cleanEmail),
-        roleOrDept: roleOrDept
-      });
-
-      setAuthToken(`session-${Date.now()}`);
-      window.location.href = '/dashboard';
-    } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+    if (!authResult.success) {
+      setError(authResult.error || 'Invalid email or password. Please verify your credentials.');
       setLoading(false);
+      return;
     }
+
+    // Success: Token and session established
+    setAuthToken(`session-${Date.now()}`);
+    window.location.href = '/dashboard';
   };
 
   return (
@@ -55,20 +48,29 @@ export default function LoginPage() {
             <Sparkles className="w-6 h-6" />
           </div>
           <h2 className="text-2xl font-black tracking-tight text-[#1c1917]">Sign In to Workspace</h2>
-          <p className="text-xs text-[#57534e]">Intelligent Research Paper Assistant</p>
+          <p className="text-xs text-[#57534e]">Enter your registered credentials to access your library</p>
         </div>
 
         {error && (
-          <div className="mb-5 flex items-center gap-2 p-3.5 bg-[#EBCFC4] border border-[#D3C4BE] rounded-2xl text-[#1c1917] text-xs font-semibold">
-            <AlertCircle className="w-4 h-4 shrink-0 text-[#1c1917]" />
-            <span>{error}</span>
+          <div className="mb-5 flex items-start gap-2.5 p-3.5 bg-[#EBCFC4] border border-[#D3C4BE] rounded-2xl text-[#1c1917] text-xs font-semibold animate-shake">
+            <ShieldAlert className="w-4 h-4 shrink-0 text-[#1c1917] mt-0.5" />
+            <div className="flex-1">
+              <span>{error}</span>
+              {error.includes('register') && (
+                <div className="mt-1">
+                  <Link href="/register" className="underline font-black text-[#1c1917]">
+                    Click here to create an account &rarr;
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-[#1c1917] uppercase tracking-wider mb-1.5">
-              Email Address
+              Registered Email Address
             </label>
             <div className="relative">
               <Mail className="w-4 h-4 text-[#57534e] absolute left-3.5 top-3.5" />
@@ -124,7 +126,7 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 pt-5 border-t border-[#D3C4BE] text-center text-xs text-[#57534e]">
-          Don't have an account?{' '}
+          Don't have an account yet?{' '}
           <Link href="/register" className="text-[#1c1917] hover:underline font-extrabold">
             Create Custom Account
           </Link>
