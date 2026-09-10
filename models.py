@@ -1,9 +1,7 @@
 """
 models.py — SQLModel table definitions: users, papers, chunks, citations, chat_history.
-Compatible with PostgreSQL, SQLite, Pylance, and VS Code typing.
+Compatible with PostgreSQL, SQLite, SQLAlchemy 2.0, Python 3.14, and Pylance.
 """
-from __future__ import annotations
-
 import uuid
 from datetime import datetime
 from enum import Enum
