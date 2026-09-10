@@ -87,15 +87,19 @@ export default function RegisterPage() {
         return;
       }
 
-      // Sync to backend SQLite database if server is running
+      // Automatically insert new user into SQLite database (research_assistant.db)
       try {
-        await api.register({
-          email: email.trim(),
-          password: password,
-          full_name: fullName.trim() || nameFromEmail(email.trim())
+        await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email.trim(),
+            password: password,
+            full_name: fullName.trim() || nameFromEmail(email.trim())
+          })
         });
       } catch (backendErr) {
-        // Safe fallback to client session if backend server is not running locally
+        console.log('Database auto-insertion note:', backendErr);
       }
 
       setAuthToken(`session-${Date.now()}`);
