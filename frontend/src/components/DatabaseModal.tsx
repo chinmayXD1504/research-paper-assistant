@@ -50,6 +50,12 @@ export default function DatabaseModal({ isOpen, onClose, currentUser }: Database
     }
   };
 
+  const handleQuickLogin = (email: string, fullName: string) => {
+    store.setUserProfile({ email, fullName });
+    onClose();
+    window.location.reload();
+  };
+
   useEffect(() => {
     if (isOpen) {
       loadAccounts();
@@ -239,14 +245,14 @@ export default function DatabaseModal({ isOpen, onClose, currentUser }: Database
                         </td>
                         <td className="p-3.5 text-right">
                           {isCurrent ? (
-                            <span className="text-[11px] font-bold text-emerald-700">✓ Current</span>
+                            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-xl">✓ Active</span>
                           ) : (
-                            <Link
-                              href="/login"
-                              className="text-[11px] font-bold text-[#1c1917] hover:underline bg-[#E8E6D9] hover:bg-[#E4DAC2] border border-[#D3C4BE] px-2.5 py-1 rounded-xl transition"
+                            <button
+                              onClick={() => handleQuickLogin(user.email, user.fullName)}
+                              className="text-[11px] font-bold text-[#1c1917] bg-[#E9CCB1] hover:bg-[#E4DAC2] border border-[#C4BDAC] px-3 py-1 rounded-xl transition cursor-pointer shadow-sm"
                             >
-                              Login
-                            </Link>
+                              Switch User
+                            </button>
                           )}
                         </td>
                       </tr>

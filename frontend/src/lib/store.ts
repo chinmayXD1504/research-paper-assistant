@@ -275,10 +275,10 @@ export const INITIAL_CHUNKS: Record<string, ChunkItem[]> = {
 };
 
 const DEFAULT_PROFILE: UserProfile = {
-  email: 'researcher@university.edu',
-  fullName: 'Academic Scholar',
-  initials: 'AS',
-  roleOrDept: 'Research Scholar'
+  email: 'chinmaymhatre406@gmail.com',
+  fullName: 'Chinmay Mhatre',
+  initials: 'CM',
+  roleOrDept: 'T.Y.B.Sc. CS • D.G. Ruparel College'
 };
 
 export interface RegisteredAccount {
@@ -441,16 +441,20 @@ export const store = {
     const stored = localStorage.getItem('assistant_user_profile');
     if (stored) {
       try {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (parsed.email && parsed.email !== 'researcher@university.edu') {
+          return parsed;
+        }
       } catch {}
     }
+    localStorage.setItem('assistant_user_profile', JSON.stringify(DEFAULT_PROFILE));
     return DEFAULT_PROFILE;
   },
 
   setUserProfile: (profile: Partial<UserProfile> & { email: string }): UserProfile => {
     const fullName = profile.fullName || nameFromEmail(profile.email);
     const initials = profile.initials || generateInitials(fullName || profile.email);
-    const roleOrDept = profile.roleOrDept || (profile.email.includes('ruparel') ? 'Roll: 9056 • T.Y.B.Sc.' : 'Academic Researcher');
+    const roleOrDept = profile.roleOrDept || (profile.email.includes('ruparel') || profile.email.includes('chinmay') ? 'Roll: 9056 • T.Y.B.Sc. CS' : 'Academic Researcher');
     
     const fullProfile: UserProfile = {
       email: profile.email.toLowerCase(),
@@ -478,10 +482,15 @@ export const store = {
       } catch {}
     }
 
-    // If it is Chinmay's default account, initialize with standard benchmarks
-    if (currentProfile.email === 'chinmay.mhatre@ruparel.edu') {
-      localStorage.setItem(userStorageKey, JSON.stringify(INITIAL_PAPERS));
-      return INITIAL_PAPERS;
+    // If it is Chinmay's account, initialize with standard benchmarks
+    if (
+      currentProfile.email === 'chinmaymhatre406@gmail.com' ||
+      currentProfile.email === 'chinmay.mhatre@ruparel.edu' ||
+      currentProfile.email === 'mhatrechinmay1@gmail.com'
+    ) {
+      const chinmayPapers = INITIAL_PAPERS.map(p => ({ ...p, user_id: currentProfile.email }));
+      localStorage.setItem(userStorageKey, JSON.stringify(chinmayPapers));
+      return chinmayPapers;
     }
 
     // For any other fresh user account, start with clean fresh empty repository!
