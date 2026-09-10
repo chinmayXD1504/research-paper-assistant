@@ -87,6 +87,17 @@ export default function RegisterPage() {
         return;
       }
 
+      // Sync to backend SQLite database if server is running
+      try {
+        await api.register({
+          email: email.trim(),
+          password: password,
+          full_name: fullName.trim() || nameFromEmail(email.trim())
+        });
+      } catch (backendErr) {
+        // Safe fallback to client session if backend server is not running locally
+      }
+
       setAuthToken(`session-${Date.now()}`);
       window.location.href = '/dashboard';
     } catch (err: any) {
