@@ -290,14 +290,54 @@ export interface RegisteredAccount {
   createdAt: string;
 }
 
-const DEFAULT_ACCOUNTS: RegisteredAccount[] = [
+export const DEFAULT_ACCOUNTS: RegisteredAccount[] = [
+  {
+    email: 'mhatrechinmay1@gmail.com',
+    password: 'Password@123',
+    fullName: 'Chinmay Mhatre',
+    initials: 'CM',
+    roleOrDept: 'T.Y.B.Sc. CS • Scholar',
+    createdAt: '2026-09-10T06:24:32.191Z'
+  },
+  {
+    email: 'chinmay.mhatre@ruparel.edu',
+    password: 'Password@123',
+    fullName: 'Chinmay Chandravadan Mhatre',
+    initials: 'CM',
+    roleOrDept: 'Roll: 9056 • D.G. Ruparel College',
+    createdAt: '2026-09-10T06:24:32.952Z'
+  },
+  {
+    email: 'chinmaymhatre406@gmail.com',
+    password: 'Password@123',
+    fullName: 'Chinmay Mhatre',
+    initials: 'CM',
+    roleOrDept: 'Academic Scholar',
+    createdAt: '2026-09-10T06:47:11.669Z'
+  },
+  {
+    email: 'sanchitmhatre815@gmail.com',
+    password: 'Password@123',
+    fullName: 'Sanchit Mhatre',
+    initials: 'SM',
+    roleOrDept: 'Research Scholar',
+    createdAt: '2026-09-10T06:36:49.269Z'
+  },
   {
     email: 'scholar@research.edu',
     password: 'Password@123',
     fullName: 'Academic Scholar',
     initials: 'AS',
     roleOrDept: 'Computer Science Department',
-    createdAt: new Date().toISOString()
+    createdAt: '2026-09-10T06:24:32.583Z'
+  },
+  {
+    email: 'testuser@research.edu',
+    password: 'Password@123',
+    fullName: 'Test User',
+    initials: 'TU',
+    roleOrDept: 'Evaluation Account',
+    createdAt: '2026-09-10T06:44:49.751Z'
   }
 ];
 
@@ -306,14 +346,27 @@ export const store = {
   getRegisteredAccounts: (): RegisteredAccount[] => {
     if (typeof window === 'undefined') return DEFAULT_ACCOUNTS;
     const stored = localStorage.getItem('assistant_registered_accounts');
+    let accounts: RegisteredAccount[] = [];
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) accounts = parsed;
       } catch {}
     }
-    localStorage.setItem('assistant_registered_accounts', JSON.stringify(DEFAULT_ACCOUNTS));
-    return DEFAULT_ACCOUNTS;
+
+    // Merge all default database accounts into accounts list if missing
+    let modified = false;
+    for (const defAcc of DEFAULT_ACCOUNTS) {
+      if (!accounts.some(a => a.email.toLowerCase() === defAcc.email.toLowerCase())) {
+        accounts.push(defAcc);
+        modified = true;
+      }
+    }
+
+    if (modified || !stored) {
+      localStorage.setItem('assistant_registered_accounts', JSON.stringify(accounts));
+    }
+    return accounts;
   },
 
   registerAccount: (data: { email: string; password: string; fullName: string; roleOrDept?: string }): { success: boolean; error?: string; profile?: UserProfile } => {
