@@ -4,12 +4,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # Defaults to zero-configuration SQLite for local development.
-    # Can be set to "postgresql+asyncpg://postgres:postgres@localhost:5432/research_assistant" in .env
-    DATABASE_URL: str = "sqlite+aiosqlite:///./research_assistant.db"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/research_assistant"
     SQL_ECHO: bool = False
 
-    SECRET_KEY: str = "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b"
+    SECRET_KEY: str = "change-me-in-prod"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
 
@@ -19,7 +17,7 @@ class Settings(BaseSettings):
     PINECONE_REGION: str = "us-east-1"
 
     UPLOAD_DIR: str = "./uploads"
-    CORS_ORIGINS: list[str] = ["*"]
+    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
 
 settings = Settings()

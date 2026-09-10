@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { removeAuthToken } from '@/lib/api';
 import { store, UserProfile } from '@/lib/store';
+import DatabaseModal from '@/components/DatabaseModal';
 
 interface SidebarProps {
   onOpenUpload?: () => void;
@@ -26,6 +27,7 @@ interface SidebarProps {
 
 export default function Sidebar({ onOpenUpload, paperCount = 3 }: SidebarProps) {
   const pathname = usePathname();
+  const [isDatabaseOpen, setIsDatabaseOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>({
     email: 'researcher@university.edu',
     fullName: 'Researcher Account',
@@ -35,6 +37,13 @@ export default function Sidebar({ onOpenUpload, paperCount = 3 }: SidebarProps) 
 
   useEffect(() => {
     setUserProfile(store.getUserProfile());
+
+    const handleProfileChange = () => {
+      setUserProfile(store.getUserProfile());
+    };
+
+    window.addEventListener('user_profile_changed', handleProfileChange);
+    return () => window.removeEventListener('user_profile_changed', handleProfileChange);
   }, []);
 
   const handleLogout = () => {
@@ -113,17 +122,21 @@ export default function Sidebar({ onOpenUpload, paperCount = 3 }: SidebarProps) 
         </div>
         <div className="mx-1 p-3.5 rounded-2xl bg-[#E8E6D9]/70 border border-[#D3C4BE] space-y-2.5 text-[11px]">
           
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[#1c1917] font-semibold">
-              <Database className="w-3.5 h-3.5 text-[#57534e]" /> Pinecone Vector
+          <button
+            onClick={() => setIsDatabaseOpen(true)}
+            className="w-full flex items-center justify-between hover:bg-[#FAF7F2] p-1.5 rounded-xl transition cursor-pointer text-left"
+            title="Click to view all registered database accounts"
+          >
+            <span className="flex items-center gap-1.5 text-[#1c1917] font-bold">
+              <Database className="w-3.5 h-3.5 text-[#1c1917]" /> DB & Accounts
             </span>
             <span className="text-[9px] bg-[#E9CCB1] text-[#1c1917] border border-[#C4BDAC] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#1c1917]"></span>
-              Live Sync
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+              Live DB
             </span>
-          </div>
+          </button>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between px-1.5">
             <span className="flex items-center gap-1.5 text-[#1c1917] font-semibold">
               <Cpu className="w-3.5 h-3.5 text-[#57534e]" /> Google Gemini
             </span>
@@ -132,7 +145,7 @@ export default function Sidebar({ onOpenUpload, paperCount = 3 }: SidebarProps) 
             </span>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between px-1.5">
             <span className="flex items-center gap-1.5 text-[#1c1917] font-semibold">
               <ShieldCheck className="w-3.5 h-3.5 text-[#57534e]" /> Privacy Vault
             </span>
@@ -146,7 +159,11 @@ export default function Sidebar({ onOpenUpload, paperCount = 3 }: SidebarProps) 
       {/* Dynamic User Profile Footer */}
       <div className="p-4 border-t border-[#D3C4BE] bg-[#E8E6D9]/40">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
+          <div 
+            onClick={() => setIsDatabaseOpen(true)}
+            className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:opacity-80 transition"
+            title="Click to inspect user account in database"
+          >
             <div className="w-9 h-9 rounded-2xl bg-[#E9CCB1] border border-[#D3C4BE] flex items-center justify-center text-xs font-extrabold text-[#1c1917] shadow-sm shrink-0">
               {userProfile.initials}
             </div>
@@ -164,6 +181,13 @@ export default function Sidebar({ onOpenUpload, paperCount = 3 }: SidebarProps) 
           </button>
         </div>
       </div>
+
+      {/* Database Modal */}
+      <DatabaseModal
+        isOpen={isDatabaseOpen}
+        onClose={() => setIsDatabaseOpen(false)}
+        currentUser={userProfile}
+      />
     </aside>
   );
 }
