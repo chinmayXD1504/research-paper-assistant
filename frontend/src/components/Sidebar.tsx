@@ -17,7 +17,7 @@ import {
   Bookmark
 } from 'lucide-react';
 import { removeAuthToken } from '@/lib/api';
-import { store, UserProfile } from '@/lib/store';
+import { store, UserProfile, isAdminUser } from '@/lib/store';
 import DatabaseModal from '@/components/DatabaseModal';
 
 interface SidebarProps {
@@ -29,10 +29,10 @@ export default function Sidebar({ onOpenUpload, paperCount = 3 }: SidebarProps) 
   const pathname = usePathname();
   const [isDatabaseOpen, setIsDatabaseOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>({
-    email: 'researcher@university.edu',
-    fullName: 'Researcher Account',
-    initials: 'RA',
-    roleOrDept: 'Academic Scholar'
+    email: 'chinmaymhatre406@gmail.com',
+    fullName: 'Chinmay Mhatre',
+    initials: 'CM',
+    roleOrDept: 'T.Y.B.Sc. CS • D.G. Ruparel College'
   });
 
   useEffect(() => {
@@ -45,6 +45,8 @@ export default function Sidebar({ onOpenUpload, paperCount = 3 }: SidebarProps) 
     window.addEventListener('user_profile_changed', handleProfileChange);
     return () => window.removeEventListener('user_profile_changed', handleProfileChange);
   }, []);
+
+  const isAdmin = isAdminUser(userProfile.email);
 
   const handleLogout = () => {
     removeAuthToken();
@@ -122,19 +124,31 @@ export default function Sidebar({ onOpenUpload, paperCount = 3 }: SidebarProps) 
         </div>
         <div className="mx-1 p-3.5 rounded-2xl bg-[#E8E6D9]/70 border border-[#D3C4BE] space-y-2.5 text-[11px]">
           
-          <button
-            onClick={() => setIsDatabaseOpen(true)}
-            className="w-full flex items-center justify-between hover:bg-[#FAF7F2] p-1.5 rounded-xl transition cursor-pointer text-left"
-            title="Click to view all registered database accounts"
-          >
-            <span className="flex items-center gap-1.5 text-[#1c1917] font-bold">
-              <Database className="w-3.5 h-3.5 text-[#1c1917]" /> DB & Accounts
+          {isAdmin && (
+            <button
+              onClick={() => setIsDatabaseOpen(true)}
+              className="w-full flex items-center justify-between hover:bg-[#FAF7F2] p-1.5 rounded-xl transition cursor-pointer text-left"
+              title="Admin: View all registered database accounts"
+            >
+              <span className="flex items-center gap-1.5 text-[#1c1917] font-bold">
+                <Database className="w-3.5 h-3.5 text-[#1c1917]" /> DB & Accounts
+              </span>
+              <span className="text-[9px] bg-[#E9CCB1] text-[#1c1917] border border-[#C4BDAC] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                Admin
+              </span>
+            </button>
+          )}
+
+          <div className="flex items-center justify-between px-1.5">
+            <span className="flex items-center gap-1.5 text-[#1c1917] font-semibold">
+              <Database className="w-3.5 h-3.5 text-[#57534e]" /> Pinecone Vector
             </span>
             <span className="text-[9px] bg-[#E9CCB1] text-[#1c1917] border border-[#C4BDAC] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
-              Live DB
+              <span className="w-1.5 h-1.5 rounded-full bg-[#1c1917]"></span>
+              Live Sync
             </span>
-          </button>
+          </div>
 
           <div className="flex items-center justify-between px-1.5">
             <span className="flex items-center gap-1.5 text-[#1c1917] font-semibold">
@@ -160,15 +174,20 @@ export default function Sidebar({ onOpenUpload, paperCount = 3 }: SidebarProps) 
       <div className="p-4 border-t border-[#D3C4BE] bg-[#E8E6D9]/40">
         <div className="flex items-center justify-between">
           <div 
-            onClick={() => setIsDatabaseOpen(true)}
-            className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:opacity-80 transition"
-            title="Click to inspect user account in database"
+            onClick={() => {
+              if (isAdmin) setIsDatabaseOpen(true);
+            }}
+            className={`flex items-center gap-2.5 min-w-0 ${isAdmin ? 'cursor-pointer hover:opacity-80 transition' : ''}`}
+            title={isAdmin ? "Admin: Click to inspect database" : "Your Private Profile"}
           >
             <div className="w-9 h-9 rounded-2xl bg-[#E9CCB1] border border-[#D3C4BE] flex items-center justify-center text-xs font-extrabold text-[#1c1917] shadow-sm shrink-0">
               {userProfile.initials}
             </div>
             <div className="overflow-hidden min-w-0">
-              <p className="text-xs font-bold text-[#1c1917] truncate">{userProfile.fullName}</p>
+              <p className="text-xs font-bold text-[#1c1917] truncate flex items-center gap-1">
+                {userProfile.fullName}
+                {isAdmin && <span className="text-[9px] text-[#1c1917]">👑</span>}
+              </p>
               <p className="text-[10px] text-[#57534e] font-semibold truncate">{userProfile.roleOrDept || userProfile.email}</p>
             </div>
           </div>
@@ -182,12 +201,14 @@ export default function Sidebar({ onOpenUpload, paperCount = 3 }: SidebarProps) 
         </div>
       </div>
 
-      {/* Database Modal */}
-      <DatabaseModal
-        isOpen={isDatabaseOpen}
-        onClose={() => setIsDatabaseOpen(false)}
-        currentUser={userProfile}
-      />
+      {/* Database Modal (Admin Only) */}
+      {isAdmin && (
+        <DatabaseModal
+          isOpen={isDatabaseOpen}
+          onClose={() => setIsDatabaseOpen(false)}
+          currentUser={userProfile}
+        />
+      )}
     </aside>
   );
 }

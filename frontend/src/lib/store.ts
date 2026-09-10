@@ -83,6 +83,17 @@ export function nameFromEmail(email: string): string {
   return email;
 }
 
+export const ADMIN_EMAILS = [
+  'chinmaymhatre406@gmail.com',
+  'chinmay.mhatre@ruparel.edu',
+  'mhatrechinmay1@gmail.com'
+];
+
+export function isAdminUser(email?: string): boolean {
+  if (!email) return false;
+  return ADMIN_EMAILS.includes(email.toLowerCase().trim());
+}
+
 export const INITIAL_PAPERS: Paper[] = [
   {
     id: 'paper-1',

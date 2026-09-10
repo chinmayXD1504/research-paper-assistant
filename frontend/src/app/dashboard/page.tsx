@@ -28,7 +28,7 @@ import {
   UploadCloud,
   FolderPlus
 } from 'lucide-react';
-import { Paper, store, UserProfile } from '@/lib/store';
+import { Paper, store, UserProfile, isAdminUser } from '@/lib/store';
 import { removeAuthToken } from '@/lib/api';
 
 export default function DashboardPage() {
@@ -40,10 +40,10 @@ export default function DashboardPage() {
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isDatabaseOpen, setIsDatabaseOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>({
-    email: 'researcher@university.edu',
-    fullName: 'Researcher Account',
-    initials: 'RA',
-    roleOrDept: 'Academic Scholar'
+    email: 'chinmaymhatre406@gmail.com',
+    fullName: 'Chinmay Mhatre',
+    initials: 'CM',
+    roleOrDept: 'T.Y.B.Sc. CS • D.G. Ruparel College'
   });
 
   const loadUserData = () => {
@@ -106,6 +106,7 @@ export default function DashboardPage() {
 
   const totalChunks = papers.reduce((acc, p) => acc + (p.chunks_count || p.page_count * 4), 0);
   const indexedCount = papers.filter((p) => p.status === 'indexed').length;
+  const isAdmin = isAdminUser(userProfile.email);
 
   return (
     <div className="flex min-h-screen bg-[#F4EEE1]">
@@ -125,6 +126,11 @@ export default function DashboardPage() {
                 <h3 className="text-base font-extrabold text-[#1c1917]">
                   Welcome, {userProfile.fullName}
                 </h3>
+                {isAdmin && (
+                  <span className="text-[10px] font-black bg-[#E9CCB1] text-[#1c1917] border border-[#C4BDAC] px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                    👑 System Administrator
+                  </span>
+                )}
                 <span className="text-[10px] font-bold bg-[#E4DAC2] text-[#1c1917] border border-[#C4BDAC] px-2.5 py-0.5 rounded-full">
                   {userProfile.roleOrDept || 'Academic Researcher'}
                 </span>
@@ -139,15 +145,17 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <button
-              onClick={() => setIsDatabaseOpen(true)}
-              className="text-xs font-black px-3.5 py-2 rounded-xl bg-[#E9CCB1] hover:bg-[#E4DAC2] text-[#1c1917] border border-[#C4BDAC] transition cursor-pointer flex items-center gap-1.5 shadow-sm"
-              title="Inspect Database and Registered Accounts"
-            >
-              <Database className="w-3.5 h-3.5 text-[#1c1917]" />
-              <span>Database & Users</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setIsDatabaseOpen(true)}
+                className="text-xs font-black px-3.5 py-2 rounded-xl bg-[#E9CCB1] hover:bg-[#E4DAC2] text-[#1c1917] border border-[#C4BDAC] transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                title="Admin: Inspect Database and Registered Accounts"
+              >
+                <Database className="w-3.5 h-3.5 text-[#1c1917]" />
+                <span>Admin DB Console</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
+              </button>
+            )}
             <Link
               href="/login"
               className="text-xs font-bold px-3.5 py-2 rounded-xl bg-[#E8E6D9] hover:bg-[#E4DAC2] text-[#1c1917] border border-[#D3C4BE] transition cursor-pointer flex items-center gap-1.5"

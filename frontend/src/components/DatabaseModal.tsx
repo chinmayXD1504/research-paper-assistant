@@ -15,7 +15,7 @@ import {
   Lock,
   UserPlus
 } from 'lucide-react';
-import { store, UserProfile } from '@/lib/store';
+import { store, UserProfile, isAdminUser } from '@/lib/store';
 import Link from 'next/link';
 
 interface DatabaseModalProps {
@@ -62,7 +62,7 @@ export default function DatabaseModal({ isOpen, onClose, currentUser }: Database
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !isAdminUser(currentUser.email)) return null;
 
   // Merge unique users across local and backend
   const allUsersMap = new Map();
@@ -101,13 +101,13 @@ export default function DatabaseModal({ isOpen, onClose, currentUser }: Database
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-black text-[#1c1917]">Database & User Registry</h3>
+                <h3 className="text-lg font-black text-[#1c1917]">👑 Admin Database & User Registry</h3>
                 <span className="text-[10px] font-bold bg-[#E8E6D9] text-[#1c1917] border border-[#C4BDAC] px-2.5 py-0.5 rounded-full flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
                   research_assistant.db
                 </span>
               </div>
-              <p className="text-xs text-[#57534e]">Live user accounts, bcrypt password encryption, and isolated Pinecone namespaces</p>
+              <p className="text-xs text-[#57534e]">Private Admin Console: Visible exclusively to Chinmay Mhatre</p>
             </div>
           </div>
           <button
