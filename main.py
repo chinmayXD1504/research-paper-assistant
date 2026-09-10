@@ -1,7 +1,6 @@
 """
-main.py — Complete FastAPI application for the Intelligent Research Paper Assistant.
-Implements authentication, multi-column PDF ingestion, Pinecone vector RAG indexing,
-grounded Gemini querying, and cross-paper search.
+main.py — FastAPI application: routing, CORS, Auth, and the background ingestion pipeline
+that ties pdf_processor -> vector_service -> rag_service -> summarization together.
 """
 from __future__ import annotations
 
@@ -9,11 +8,12 @@ import logging
 import os
 import uuid
 from contextlib import asynccontextmanager
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Optional, List
 
 from fastapi import BackgroundTasks, Depends, FastAPI, File, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, EmailStr
 from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,7 +23,13 @@ from database import AsyncSessionLocal, get_db, init_db
 from models import Chunk, Paper, PaperStatus, User
 from pdf_processor import UnsupportedPdfError, chunk_document
 from rag_service import answer_question
-from security import create_access_token, get_current_user, hash_password, verify_password, validate_strong_password
+from security import (
+    create_access_token, 
+    get_current_user, 
+    hash_password, 
+    verify_password, 
+    validate_strong_password
+)
 from vector_service import ensure_index, upsert_chunks, similarity_search
 
 logging.basicConfig(level=logging.INFO)
@@ -70,10 +76,16 @@ class UserRegisterRequest(BaseModel):
     full_name: Optional[str] = None
 
 
+class UserLoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
 class UserResponse(BaseModel):
     id: str
     email: str
     full_name: Optional[str] = None
+    created_at: Optional[datetime] = None
 
 
 class TokenResponse(BaseModel):
@@ -85,8 +97,6 @@ class TokenResponse(BaseModel):
 class QueryRequest(BaseModel):
     question: str
 
-
-from fastapi.responses import HTMLResponse
 
 # --- Health & Base Endpoints ---
 @app.get("/", response_class=HTMLResponse, tags=["Health"])
@@ -158,7 +168,8 @@ async def register(payload: UserRegisterRequest, db: AsyncSession = Depends(get_
             detail=reason or "Password does not meet security requirements."
         )
 
-    stmt = select(User).where(User.email == payload.email)
+    clean_email = str(payload.email).strip().lower()
+    stmt = select(User).where(User.email == clean_email)
     res = await db.execute(stmt)
     existing_user = res.scalars().first()
 
@@ -170,9 +181,10 @@ async def register(payload: UserRegisterRequest, db: AsyncSession = Depends(get_
 
     user = User(
         id=uuid.uuid4(),
-        email=payload.email,
+        email=clean_email,
         password_hash=hash_password(payload.password),
-        full_name=payload.full_name,
+        full_name=payload.full_name or clean_email.split("@")[0],
+        created_at=datetime.now(timezone.utc)
     )
     db.add(user)
     await db.commit()
@@ -182,29 +194,81 @@ async def register(payload: UserRegisterRequest, db: AsyncSession = Depends(get_
     return TokenResponse(
         access_token=token,
         token_type="bearer",
-        user=UserResponse(id=str(user.id), email=user.email, full_name=user.full_name)
+        user=UserResponse(
+            id=str(user.id), 
+            email=user.email, 
+            full_name=user.full_name,
+            created_at=user.created_at
+        )
     )
 
 
 @app.post("/api/auth/login", response_model=TokenResponse, tags=["Authentication"])
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
-    stmt = select(User).where(User.email == form_data.username)
+async def login(payload: UserLoginRequest, db: AsyncSession = Depends(get_db)):
+    clean_email = str(payload.email).strip().lower()
+    stmt = select(User).where(User.email == clean_email)
     res = await db.execute(stmt)
     user = res.scalars().first()
 
-    if not user or not verify_password(form_data.password, user.password_hash):
+    if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password.",
-            headers={"WWW-Authenticate": "Bearer"},
+            detail="Invalid email or password. Please verify your credentials."
         )
 
     token = create_access_token(subject=str(user.id))
     return TokenResponse(
         access_token=token,
         token_type="bearer",
-        user=UserResponse(id=str(user.id), email=user.email, full_name=user.full_name)
+        user=UserResponse(
+            id=str(user.id), 
+            email=user.email, 
+            full_name=user.full_name,
+            created_at=user.created_at
+        )
     )
+
+
+@app.post("/api/auth/sync", tags=["Authentication"])
+async def sync_accounts(accounts: List[dict], db: AsyncSession = Depends(get_db)):
+    """Sync frontend local storage accounts into SQLite database."""
+    added_count = 0
+    for acc in accounts:
+        email = acc.get("email", "").strip().lower()
+        if not email:
+            continue
+        stmt = select(User).where(User.email == email)
+        res = await db.execute(stmt)
+        if not res.scalars().first():
+            pw = acc.get("password", "Password@123")
+            new_user = User(
+                id=uuid.uuid4(),
+                email=email,
+                password_hash=hash_password(pw),
+                full_name=acc.get("fullName", email.split("@")[0]),
+                created_at=datetime.now(timezone.utc)
+            )
+            db.add(new_user)
+            added_count += 1
+    if added_count > 0:
+        await db.commit()
+    return {"status": "ok", "synced_users": added_count}
+
+
+@app.get("/api/auth/users", tags=["Authentication"])
+async def list_users(db: AsyncSession = Depends(get_db)):
+    """List all registered users."""
+    res = await db.execute(select(User))
+    users = res.scalars().all()
+    return [
+        {
+            "id": str(u.id),
+            "email": u.email,
+            "full_name": u.full_name,
+            "created_at": str(u.created_at)
+        }
+        for u in users
+    ]
 
 
 @app.get("/api/auth/me", response_model=UserResponse, tags=["Authentication"])
@@ -212,11 +276,11 @@ async def get_me(current_user: User = Depends(get_current_user)):
     return UserResponse(
         id=str(current_user.id),
         email=current_user.email,
-        full_name=current_user.full_name
+        full_name=current_user.full_name,
+        created_at=current_user.created_at
     )
 
 
-# --- Paper Management Endpoints ---
 def _save_upload_to_disk(file: UploadFile, paper_id: str, contents: bytes) -> str:
     path = os.path.join(UPLOAD_DIR, f"{paper_id}_{file.filename}")
     with open(path, "wb") as f:
@@ -231,7 +295,7 @@ async def upload_paper(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if file.content_type != "application/pdf" and not file.filename.endswith(".pdf"):
+    if file.content_type != "application/pdf":
         raise HTTPException(400, "Only PDF files are supported.")
 
     contents = await file.read()
@@ -245,9 +309,9 @@ async def upload_paper(
         id=uuid.UUID(paper_id),
         user_id=current_user.id,
         filename=file.filename,
-        title=file.filename.replace(".pdf", "").replace("_", " ").title(),
         storage_path=storage_path,
         status=PaperStatus.QUEUED,
+        uploaded_at=datetime.now(timezone.utc)
     )
     db.add(paper)
     await db.commit()
@@ -255,75 +319,63 @@ async def upload_paper(
     if background_tasks:
         background_tasks.add_task(process_paper_pipeline, paper_id, str(current_user.id), storage_path)
 
-    return {
-        "paper_id": paper_id,
-        "filename": file.filename,
-        "title": paper.title,
-        "status": "queued"
-    }
+    return {"paper_id": paper_id, "filename": file.filename, "status": "queued"}
 
 
 async def process_paper_pipeline(paper_id: str, user_id: str, storage_path: str) -> None:
     async with AsyncSessionLocal() as db:
         paper = await db.get(Paper, uuid.UUID(paper_id))
-        if paper is None:
-            logger.error("Paper %s vanished before pipeline ran", paper_id)
+        if not paper:
             return
 
+        paper.status = PaperStatus.PROCESSING
+        await db.commit()
+
         try:
-            paper.status = PaperStatus.PROCESSING
-            await db.commit()
+            doc = chunk_document(storage_path)
+            paper.page_count = doc.page_count
+            vector_ids = upsert_chunks(paper_id, user_id, doc.chunks)
 
-            chunks = chunk_document(storage_path)
-
-            db_chunks = [
-                Chunk(
-                    paper_id=paper.id,
-                    chunk_index=c.chunk_index,
-                    page_number=c.page_number,
-                    content=c.content,
-                    token_count=c.token_estimate,
+            for chunk, vec_id in zip(doc.chunks, vector_ids):
+                db.add(
+                    Chunk(
+                        paper_id=paper.id,
+                        chunk_index=chunk.chunk_index,
+                        page_number=chunk.page_number,
+                        content=chunk.content,
+                        token_count=chunk.token_count,
+                        pinecone_vector_id=vec_id,
+                    )
                 )
-                for c in chunks
-            ]
-            db.add_all(db_chunks)
-            await db.flush()
 
-            vector_ids = upsert_chunks(paper_id, user_id, chunks)
-            for db_chunk, vec_id in zip(db_chunks, vector_ids):
-                db_chunk.pinecone_vector_id = vec_id
-
-            paper.page_count = max((c.page_number for c in chunks), default=1)
             paper.status = PaperStatus.INDEXED
             await db.commit()
-
         except UnsupportedPdfError as exc:
             paper.status = PaperStatus.UNSUPPORTED
             paper.failure_reason = str(exc)
             await db.commit()
         except Exception as exc:
-            logger.exception("Pipeline failed for paper %s", paper_id)
+            logger.error("Processing failed for paper %s: %s", paper_id, exc, exc_info=True)
             paper.status = PaperStatus.FAILED
             paper.failure_reason = str(exc)
             await db.commit()
 
 
 @app.get("/api/papers", tags=["Papers"])
-async def list_user_papers(
+async def list_papers(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Paper).where(Paper.user_id == current_user.id).order_by(Paper.created_at.desc())
+    stmt = select(Paper).where(Paper.user_id == current_user.id)
     res = await db.execute(stmt)
-    papers = res.scalars().all()
-    return papers
+    return res.scalars().all()
 
 
 @app.get("/api/papers/{paper_id}", tags=["Papers"])
 async def get_paper(
     paper_id: str,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     paper = await db.get(Paper, uuid.UUID(paper_id))
     if paper is None or paper.user_id != current_user.id:
@@ -332,7 +384,7 @@ async def get_paper(
 
 
 @app.get("/api/papers/{paper_id}/status", tags=["Papers"])
-async def paper_status(
+async def get_paper_status(
     paper_id: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -343,29 +395,7 @@ async def paper_status(
     return {"status": paper.status, "failure_reason": paper.failure_reason}
 
 
-@app.delete("/api/papers/{paper_id}", tags=["Papers"])
-async def delete_paper(
-    paper_id: str,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    paper = await db.get(Paper, uuid.UUID(paper_id))
-    if paper is None or paper.user_id != current_user.id:
-        raise HTTPException(404, "Paper not found.")
-
-    if os.path.exists(paper.storage_path):
-        try:
-            os.remove(paper.storage_path)
-        except Exception:
-            pass
-
-    await db.delete(paper)
-    await db.commit()
-    return {"message": "Paper successfully deleted"}
-
-
-# --- RAG & Semantic Search Endpoints ---
-@app.post("/api/papers/{paper_id}/query", tags=["RAG Query"])
+@app.post("/api/papers/{paper_id}/query", tags=["RAG"])
 async def query_paper(
     paper_id: str,
     payload: QueryRequest,
@@ -382,15 +412,10 @@ async def query_paper(
     return result
 
 
-@app.post("/api/library/search", tags=["Semantic Search"])
+@app.post("/api/library/search", tags=["Search"])
 async def cross_paper_search(
     payload: QueryRequest,
     current_user: User = Depends(get_current_user),
 ):
-    results = similarity_search(
-        query=payload.question,
-        user_id=str(current_user.id),
-        paper_id=None,
-        top_k=8
-    )
-    return {"query": payload.question, "results": results}
+    results = similarity_search(payload.question, user_id=str(current_user.id), top_k=8)
+    return results
